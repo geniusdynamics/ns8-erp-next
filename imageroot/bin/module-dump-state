@@ -5,15 +5,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-set -e
-
-# if ! systemctl --user -q is-active erpnext.service; then
-# exit 0
-# fi
-
-#Creating A manual back up from internal app
 SITE="frontend"
-BACKUP_FILE="backup_paths.txt"
+BACKUP_FILE="backup_paths.env"
 BASE_DIR="/home/frappe/frappe-bench/sites/"
 
 backup_and_save_paths() {
@@ -23,9 +16,10 @@ backup_and_save_paths() {
 	echo "Listing apps"
 	podman exec backend bench list-apps
 	podman exec frontend bench list-apps
-	echo "Running this command"
 	echo "Running backup for site: $site"
+
 	output=$(podman exec backend bench --site "$site" backup --with-files 2>&1)
+	echo "Raw backup output: $output"
 
 	if [[ $? -ne 0 ]]; then
 		echo "Error during backup: $output"
@@ -34,11 +28,11 @@ backup_and_save_paths() {
 
 	echo "Backup output received."
 
-	# Extract the paths from the output and remove leading ./ and sizes
-	local config_path=$(echo "$output" | grep -oP '(?<=Config\s+:\s)\S+' | sed 's|^\./||' | awk '{print $1}')
-	local db_path=$(echo "$output" | grep -oP '(?<=Database:\s)\S+' | sed 's|^\./||' | awk '{print $1}')
-	local public_archive=$(echo "$output" | grep -oP '(?<=Public\s+:\s)\S+' | sed 's|^\./||' | awk '{print $1}')
-	local private_archive=$(echo "$output" | grep -oP '(?<=Private\s+:\s)\S+' | sed 's|^\./||' | awk '{print $1}')
+	# Extracting paths from output
+	local config_path=$(echo "$output" | grep -oP "Config\s*:\s*\K\S+")
+	local db_path=$(echo "$output" | grep -oP "Database:\s*\K\S+")
+	local public_archive=$(echo "$output" | grep -oP "Public\s*:\s*\K\S+")
+	local private_archive=$(echo "$output" | grep -oP "Private\s*:\s*\K\S+")
 
 	# Validate that paths were extracted correctly
 	if [[ -z "$config_path" || -z "$db_path" || -z "$public_archive" || -z "$private_archive" ]]; then
@@ -48,15 +42,13 @@ backup_and_save_paths() {
 
 	# Save the paths to the backup file
 	{
-		echo "CONFIG_PATH=${BASE_DIR}${config_path}"
-		echo "DB_PATH=${BASE_DIR}${db_path}"
-		echo "PUBLIC_ARCHIVE=${BASE_DIR}${public_archive}"
-		echo "PRIVATE_ARCHIVE=${BASE_DIR}${private_archive}"
+		echo "CONFIG_PATH=${BASE_DIR}${config_path#./}"
+		echo "DB_PATH=${BASE_DIR}${db_path#./}"
+		echo "PUBLIC_ARCHIVE=${BASE_DIR}${public_archive#./}"
+		echo "PRIVATE_ARCHIVE=${BASE_DIR}${private_archive#./}"
 	} >"$BACKUP_FILE"
 
 	echo "Backup paths saved to $BACKUP_FILE"
 }
 
-echo "Starting Backup..."
 backup_and_save_paths "$SITE"
-echo "Backup finished."

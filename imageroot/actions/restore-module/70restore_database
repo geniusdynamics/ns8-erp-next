@@ -7,7 +7,7 @@
 
 set -e
 source database.env
-
+source backup_paths.env
 # Check if the service is running
 is_service_active() {
 	local service_name=$1
@@ -29,10 +29,19 @@ fi
 echo "Restoring backup..."
 
 SITE="frontend"
-BACKUP_FILE="backup_paths.txt"
+BACKUP_FILE="backup_paths.env"
 restore_back_up() {
 	local site=$1
 
+	# Print the current working directory
+	echo "Current working directory: $(pwd)"
+	ls -la
+
+	# Check if the backup_paths.txt file exists
+	if [[ ! -f "${BASE_DIR}${BACKUP_FILE}" ]]; then
+		echo "Error: ${BASE_DIR}${BACKUP_FILE} not found"
+		exit 1
+	fi
 	# Load the backup paths fom file
 	source "$BACKUP_FILE"
 

@@ -5,4 +5,4 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 
-rm -vf backup_paths.txt
+rm -vf backup_paths.env
